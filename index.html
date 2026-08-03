@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pausa Caffè - Chat Anonima</title>
     <meta name="theme-color" content="#120D0A">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" href="/icon-192.png">
-    <link rel="apple-touch-icon" href="/icon-192.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -944,15 +941,6 @@
         imageModal.addEventListener('click', (e) => {
             if (e.target === imageModal) imageModal.classList.remove('active');
         });
-
-        // Registrazione Service Worker (necessaria per l'installazione come app)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(err => {
-                    console.log('Registrazione SW fallita:', err);
-                });
-            });
-        }
     </script>
 </body>
 </html>
