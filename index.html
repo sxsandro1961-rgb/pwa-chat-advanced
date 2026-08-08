@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#120D0A">
+<meta name="description" content="Chat anonima Pausa Caffè">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Pausa Caffè - Chat Anonima</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+:root{--bg:#120d0a;--panel:#1a130e;--card:#241c15;--border:#3a2b20;--text:#f5f5f4;--muted:#a8a29e;--accent:#d97706;--accent2:#f59e0b;--danger:#ef4444}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}button,input,textarea{font:inherit}button{cursor:pointer}.app{height:100dvh;max-width:650px;margin:auto;background:var(--panel);display:flex;flex-direction:column}.top{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px}.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#d97706,#78350f);font-size:22px}.title{font-weight:800}.sub{font-size:12px;color:var(--muted)}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:5px}.screen{display:none;flex:1;min-height:0}.screen.active{display:flex}.lobby{flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:18px}.cup{font-size:72px}.lobby h1{margin:0}.lobby p{color:var(--muted);max-width:390px;line-height:1.5}.primary{border:0;border-radius:14px;background:var(--accent);color:#fff;padding:14px 22px;font-weight:800;min-width:210px}.primary:disabled{opacity:.55}.secondary{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:12px;padding:10px 14px}.status{color:var(--muted);min-height:22px}.chat{flex-direction:column}.chat-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.chat-head strong{display:block}.messages{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:9px}.msg{max-width:82%;padding:9px 11px;border-radius:15px;background:#2a2119;align-self:flex-start;overflow-wrap:anywhere}.msg.me{align-self:flex-end;background:var(--accent);color:#fff}.msg img{display:block;max-width:100%;max-height:330px;border-radius:11px;margin-top:2px}.time{font-size:10px;opacity:.65;margin-top:4px}.composer{padding:10px;display:flex;gap:8px;border-top:1px solid var(--border);align-items:flex-end}.composer textarea{flex:1;resize:none;min-height:44px;max-height:120px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);padding:11px}.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:20px}.send{background:var(--accent);border:0}.preview{display:none;padding:8px 10px;border-top:1px solid var(--border);gap:8px;align-items:center}.preview.show{display:flex}.preview img{width:58px;height:58px;object-fit:cover;border-radius:9px}.preview span{font-size:12px;color:var(--muted);flex:1}.overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:50}.overlay.show{display:flex}.camera-box{width:min(100%,650px);height:100%;display:flex;flex-direction:column;background:#000}.camera-top{padding:12px;display:flex;justify-content:space-between}.camera-video{width:100%;flex:1;min-height:0;object-fit:cover;background:#000}.camera-bottom{padding:18px;display:flex;justify-content:center;gap:24px}.shutter{width:70px;height:70px;border-radius:50%;border:5px solid #fff;background:#fff;box-shadow:0 0 0 3px #777}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 15px;border-radius:12px;display:none;z-index:100;max-width:90%;text-align:center}.toast.show{display:block}.empty{margin:auto;color:var(--muted);text-align:center}.file{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><div class="brand"><div class="logo">☕</div><div><div class="title">Pausa Caffè</div><div class="sub"><span class="dot"></span>chat anonima</div></div></div></header>
+<section id="lobby" class="screen active lobby"><div class="cup">☕</div><h1>Trova qualcuno per una pausa</h1><p>Chat anonima e temporanea. Non serve creare un account.</p><button id="find-btn" class="primary">Cerca una persona</button><div id="status" class="status"></div></section>
+<section id="chat" class="screen chat">
+  <div class="chat-head"><div><strong>☕ Pausa Caffè</strong><span id="partner-status" class="sub">connesso</span></div><button id="leave-btn" class="secondary">Esci</button></div>
+  <div id="messages" class="messages"><div class="empty" id="empty">Nessun messaggio.<br>Scrivi qualcosa o manda una foto.</div></div>
+  <div id="preview" class="preview"><img id="preview-img" alt="Anteprima"><span>Foto pronta per l'invio</span><button id="cancel-photo" class="secondary">×</button></div>
+  <div class="composer"><button id="camera-btn" class="iconbtn" aria-label="Fotocamera">📷</button><label class="iconbtn" aria-label="Galleria">🖼️<input id="gallery-input" class="file" type="file" accept="image/*"></label><textarea id="message-input" rows="1" placeholder="Scrivi un messaggio..."></textarea><button id="send-btn" class="iconbtn send" aria-label="Invia">➤</button></div>
+</section>
+</div>
+<div id="camera-overlay" class="overlay" aria-hidden="true"><div class="camera-box"><div class="camera-top"><button id="switch-camera-btn" class="secondary">🔄 Cambia</button><button id="close-camera-btn" class="secondary">✕</button></div><video id="camera-video" class="camera-video" autoplay playsinline muted></video><canvas id="camera-canvas" hidden></canvas><div class="camera-bottom"><button id="capture-photo-btn" class="shutter" aria-label="Scatta"></button></div></div></div>
+<div id="toast" class="toast"></div>
+<script src="/app.js" defer></script>
+</body></html>
