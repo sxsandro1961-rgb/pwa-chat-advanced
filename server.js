@@ -1,49 +1,99 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
-app.use(express.static(__dirname)); // Serve index.html dalla stessa cartella/URL del backend
-
 const server = http.createServer(app);
-
-// Configurazione Socket.io con CORS abilitato
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  maxHttpBufferSize: 5e6
 });
 
-// Coda degli utenti in attesa di un partner
-let waitingQueue = [];
+app.use(cors());
+app.use(express.static(__dirname));
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+const waitingQueue = [];
+const roomsBySocket = new Map();
+
+function removeFromQueue(socketId) {
+  const i = waitingQueue.indexOf(socketId);
+  if (i !== -1) waitingQueue.splice(i, 1);
+}
+
+function leaveRoom(socket) {
+  const roomId = roomsBySocket.get(socket.id);
+  if (!roomId) return;
+  socket.to(roomId).emit('partner_left');
+  socket.leave(roomId);
+  roomsBySocket.delete(socket.id);
+}
 
 io.on('connection', (socket) => {
-    console.log(`[+] Utente connesso: \${socket.id}`);
-    console.log(`[DEBUG] Utenti connessi totali: \${io.sockets.sockets.size}`);
-    console.log(`[DEBUG] Coda di attesa attuale: ${waitingQueue.length} utenti`);
+  console.log(`[+] ${socket.id}`);
 
-    // Gestione ricerca partner
-    socket.on('find_partner', () => {
-        console.log(`[DEBUG] Utente ${socket.id} cerca partner. Coda attuale: ${waitingQueue.length}`);
-        
-        // Se l'utente è già in coda, evitiamo duplicati
-        if (waitingQueue.includes(socket.id)) {
-            console.log(`[DEBUG] Utente ${socket.id} già in coda, ignoro richiesta`);
-            return;
-        }
+  socket.on('find_partner', () => {
+    removeFromQueue(socket.id);
+    leaveRoom(socket);
 
-        // Se c'è un altro utente in attesa
-        if (waitingQueue.length > 0) {
-            const partnerId = waitingQueue.shift();
-            console.log(`[DEBUG] Trovato partner ${partnerId} per ${socket.id}`);
-            const roomId = `room_${socket.id}_${partnerId}`;
+    let partnerId = null;
+    while (waitingQueue.length && !partnerId) {
+      const candidate = waitingQueue.shift();
+      if (candidate !== socket.id && io.sockets.sockets.has(candidate)) partnerId = candidate;
+    }
 
-            // Fai entrare entrambi nella stanza di chat
-            socket.join(roomId);
-            const partnerSocket = io.sockets.sockets.get(partnerId);
+    if (!partnerId) {
+      waitingQueue.push(socket.id);
+      socket.emit('waiting');
+      return;
+    }
 
-            if (partnerSocket) {
-                partnerSocket.join(roomId);
+    const roomId = `room_${socket.id}_${partnerId}`;
+    const partner = io.sockets.sockets.get(partnerId);
+    socket.join(roomId);
+    partner.join(roomId);
+    roomsBySocket.set(socket.id, roomId);
+    roomsBySocket.set(partnerId, roomId);
+
+    socket.emit('partner_found', { roomId });
+    partner.emit('partner_found', { roomId });
+  });
+
+  socket.on('send_message', (payload = {}) => {
+    const roomId = roomsBySocket.get(socket.id);
+    if (!roomId || payload.roomId !== roomId) return;
+
+    const message = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      senderId: socket.id,
+      type: payload.type === 'image' ? 'image' : 'text',
+      text: typeof payload.text === 'string' ? payload.text.slice(0, 4000) : '',
+      image: typeof payload.image === 'string' ? payload.image : null,
+      createdAt: new Date().toISOString()
+    };
+
+    if (message.type === 'text' && !message.text.trim()) return;
+    if (message.type === 'image' && !message.image) return;
+
+    io.to(roomId).emit('receive_message', message);
+  });
+
+  socket.on('leave_chat', () => {
+    removeFromQueue(socket.id);
+    leaveRoom(socket);
+    socket.emit('left_chat');
+  });
+
+  socket.on('disconnect', () => {
+    removeFromQueue(socket.id);
+    leaveRoom(socket);
+    console.log(`[-] ${socket.id}`);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Pausa Caffè in ascolto sulla porta ${PORT}`);
+});
